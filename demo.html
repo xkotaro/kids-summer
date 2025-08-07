@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIってなんだろう？- 親子で学ぶAIアニメーション (V10)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            touch-action: manipulation;
+        }
+        .font-pop {
+            font-family: 'Mochiy Pop One', sans-serif;
+        }
+        .slide {
+            display: none; opacity: 0; transition: opacity 0.8s ease-in-out;
+            width: 100%; height: 100%; position: absolute; top: 0; left: 0;
+            flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 1.5rem; gap: 0.5rem; /* Reduced gap */
+        }
+        .slide.active { display: flex; opacity: 1; }
+        .fade-in { opacity: 0; animation: fadeIn 1s ease-in-out forwards; }
+        .fade-in-delay-1 { animation-delay: 0.5s; }
+        .fade-in-delay-2 { animation-delay: 1s; }
+        .fade-in-delay-3 { animation-delay: 1.5s; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* --- Robot Animation (V10) --- */
+        .robot-container { transform: scale(1.2); }
+        .robot-body { animation: bounce-float 4s infinite ease-in-out; }
+        .robot-shadow { animation: shadow-shrink 4s infinite ease-in-out; background: rgba(0,0,0,0.1); width: 80%; height: 10px; border-radius: 50%; }
+        .robot-eye { animation: blink-cute 5s infinite; transform-origin: center; }
+        .robot-antenna-light { animation: glow 2s infinite; }
+        .robot-arm {
+            width: 30px; height: 12px; background: #60a5fa;
+            border-radius: 6px; position: absolute;
+            top: 55%;
+            transform-origin: 90% 50%;
+            animation: wave-arm 2.5s infinite ease-in-out;
+        }
+        .robot-arm.left { left: -22px; --scale: 1; animation-delay: 0s; }
+        .robot-arm.right { right: -22px; --scale: -1; animation-delay: 0.2s; }
+
+        @keyframes bounce-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        @keyframes shadow-shrink { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.8); opacity: 0.7; } }
+        @keyframes blink-cute { 0%, 95%, 100% { transform: scaleY(1); } 97.5% { transform: scaleY(0.1); } }
+        @keyframes glow { 0%, 100% { background-color: #fef08a; box-shadow: 0 0 5px #fef08a; } 50% { background-color: #fde047; box-shadow: 0 0 15px 5px #fef08a; } }
+        @keyframes wave-arm { 0%, 50%, 100% { transform: rotate(20deg) scaleX(var(--scale)); } 25% { transform: rotate(-30deg) scaleX(var(--scale)); } 75% { transform: rotate(-30deg) scaleX(var(--scale)); } }
+
+        #boids-canvas { background: linear-gradient(to bottom, #87CEEB, #4682B4); width: 100%; height: 200px; border-radius: 1rem; cursor: pointer; }
+
+        /* --- LLM Demo (V10) --- */
+        #llm-v6-viz {
+            background-color: #f3f4f6; border-radius: 0.75rem; padding: 1rem;
+            width: 100%; max-width: 720px;
+        }
+        #llm-v6-sentence {
+            font-size: 1.5rem; font-weight: bold; min-height: 2.5rem; margin-bottom: 0.5rem;
+            color: #1e3a8a;
+        }
+        #llm-v6-canvas-container {
+            height: 180px; /* Reduced height */
+            position: relative; margin-bottom: 0.5rem;
+        }
+        .llm-v6-btn {
+            font-size: 1rem; padding: 0.5rem 1rem; border: none; border-radius: 0.5rem;
+            background:#6366f1; color: white; cursor: pointer; transition: background-color 0.2s;
+        }
+        .llm-v6-btn:hover { background-color: #4f46e5; }
+        .llm-v6-btn:disabled { background-color: #a5b4fc; cursor: not-allowed; }
+
+        .future-bg { background: #000022; overflow: hidden; background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px), radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px), radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px), radial-gradient(rgba(255,255,255,.4), rgba(255,255,255,.1) 2px, transparent 30px); background-size: 550px 550px, 350px 350px, 250px 250px, 150px 150px; background-position: 0 0, 40px 60px, 130px 270px, 70px 100px; }
+        .future-rocket { font-size: 4rem; position: absolute; top: 80%; left: 10%; animation: fly-rocket 10s linear infinite; }
+        @keyframes fly-rocket { 0% { transform: translate(0, 0) rotate(45deg); } 100% { transform: translate(100vw, -100vh) rotate(45deg); } }
+        .future-planet { font-size: 5rem; position: absolute; top: 15%; right: 15%; color: #f97316; animation: spin-planet 20s linear infinite; }
+        @keyframes spin-planet { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .quiz-btn { transition: all 0.3s ease; }
+        .quiz-btn:hover:not(:disabled) { transform: translateY(-5px) scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .quiz-btn.correct { background-color: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; }
+        .quiz-btn.wrong { background-color: #e74c3c !important; color: white !important; border-color: #c0392b !important; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-200 to-purple-200 text-gray-800 flex items-center justify-center min-h-screen p-2 sm:p-4">
+
+    <div id="animation-container" class="w-full max-w-4xl h-[85vh] sm:h-[80vh] bg-white/50 backdrop-blur-sm rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
+        
+        <main id="main-content" class="flex-grow relative">
+
+            <!-- Slide 1: Title + Intro (V9) -->
+            <div id="slide-0" class="slide active">
+                <h1 class="text-4xl md:text-6xl font-pop text-purple-600 fade-in">AIって、なんだろう？</h1>
+                <div class="robot-container fade-in fade-in-delay-1 flex flex-col items-center">
+                    <div class="robot-body w-32 h-32 relative">
+                        <div class="w-full h-full bg-gradient-to-br from-blue-400 to-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                            <div class="robot-arm left"></div>
+                            <div class="robot-arm right"></div>
+                            <div class="bg-white/50 w-28 h-14 rounded-lg flex items-center justify-center gap-3">
+                                <div class="robot-eye bg-gray-800 w-5 h-7 rounded-full flex items-center justify-center"><div class="w-2 h-3 bg-white rounded-full translate-x-0.5 -translate-y-0.5"></div></div>
+                                <div class="robot-eye bg-gray-800 w-5 h-7 rounded-full flex items-center justify-center"><div class="w-2 h-3 bg-white rounded-full translate-x-0.5 -translate-y-0.5"></div></div>
+                            </div>
+                        </div>
+                        <div class="absolute -top-6 left-1/2 -translate-x-1/2 w-2 h-6 bg-gray-400 rounded-t-full"><div class="robot-antenna-light absolute -top-3 -left-1 w-4 h-4 bg-yellow-300 rounded-full"></div></div>
+                    </div>
+                    <div class="robot-shadow mt-2"></div>
+                </div>
+                <p class="text-lg md:text-2xl mt-4 fade-in fade-in-delay-2">こんにちは！わたしはAIロボットの<span class="font-pop text-blue-500">まなみ</span>だよ。<br>いっしょにAIのふしぎなせかいをたんけんしよう！</p>
+            </div>
+
+            <!-- Slide 2: What is Intelligence? (V9) -->
+            <div id="slide-1" class="slide bg-sky-100">
+                <h2 class="text-3xl md:text-5xl font-pop text-sky-700 fade-in">「かしこい」って、どういうこと？</h2>
+                <canvas id="boids-canvas" class="fade-in fade-in-delay-1"></canvas>
+                <p class="text-lg md:text-xl fade-in fade-in-delay-2">おさかなの大群みたいに、みんなでかしこくうごけるんだ。<br><span class="font-bold">（画面をクリックすると、ボス魚がたんじょうしてマウスをおいかけるよ！）</span></p>
+            </div>
+
+            <!-- Slide 3: What is AI? (V9) -->
+            <div id="slide-2" class="slide">
+                <h2 class="text-3xl md:text-5xl font-pop text-green-600 fade-in">じゃあ、AIってなに？</h2>
+                <div class="flex flex-col sm:flex-row items-center justify-around w-full gap-4 my-4">
+                    <div class="text-center fade-in fade-in-delay-1">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2103/2103309.png" alt="人間の脳みそのイラスト" class="w-24 h-24 mx-auto">
+                        <p class="font-bold text-xl">人間の「かしこさ」</p>
+                    </div>
+                    <div class="text-5xl text-green-500 font-bold fade-in fade-in-delay-2">→</div>
+                    <div class="text-center fade-in fade-in-delay-3">
+                         <img src="https://cdn-icons-png.flaticon.com/512/428/428001.png" alt="ノートパソコンのイラスト" class="w-24 h-24 mx-auto">
+                        <p class="font-bold text-xl">コンピューター</p>
+                    </div>
+                </div>
+                <p class="text-lg md:text-xl fade-in fade-in-delay-3">AIは「人工知能」。人間の「かしこさ」をお手本に、<br>コンピューターが「かんがえる」ぎじゅつだよ。</p>
+            </div>
+
+            <!-- Slide 4: How does it think? (V10) -->
+            <div id="slide-3" class="slide bg-indigo-100">
+                <h2 class="text-3xl md:text-5xl font-pop text-indigo-700 fade-in">どうやってことばを話すの？</h2>
+                <div id="llm-v6-viz" class="w-full max-w-4xl fade-in fade-in-delay-2">
+                    <div id="llm-v6-sentence" class="text-2xl font-bold h-10 mb-2 text-center"></div>
+                    <div class="flex justify-center bg-white/50 p-2 rounded-lg h-64">
+                        <div id="llm-v6-canvas-container" class="w-full flex-1 relative">
+                            <canvas id="llm-v6-nn-canvas" class="absolute inset-0 w-full h-full"></canvas>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-center gap-4">
+                        <button id="llm-v6-predict-btn" class="llm-v6-btn">予測する</button>
+                        <button id="llm-v6-again-btn" class="llm-v6-btn">別の例</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 5: Examples -->
+            <div id="slide-4" class="slide">
+                <h2 class="text-3xl md:text-5xl font-pop text-red-500 fade-in">AIはどこにいるかな？</h2>
+                <div class="flex flex-wrap justify-center items-center gap-6 my-2">
+                    <div class="text-center fade-in fade-in-delay-1"><svg class="w-16 h-16 mx-auto text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.254,4,12,4,12,4S5.746,4,4.186,4.418 c-0.86,0.23-1.538,0.908-1.768,1.768C2,7.746,2,12,2,12s0,4.254,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768 C5.746,20,12,20,12,20s6.254,0,7.814-0.418c0.861-0.23,1.538-0.908,1.768-1.768C22,16.254,22,12,22,12S22,7.746,21.582,6.186z M10,15.464V8.536L16,12L10,15.464z"/></svg><p>おすすめ動画</p></div>
+                    <div class="text-center fade-in fade-in-delay-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 017 8a1 1 0 10-2 0 7.001 7.001 0 006 6.93V17H9a1 1 0 100 2h2a1 1 0 100-2v-2.07z" clip-rule="evenodd" /></svg><p>こえの操作</p></div>
+                    <div class="text-center fade-in fade-in-delay-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-700" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg><p>ゲームの敵</p></div>
+                </div>
+                <p class="text-lg md:text-xl fade-in fade-in-delay-3">ほかにも、<span class="font-bold text-red-600">自動で絵をかいたり</span>、<span class="font-bold text-red-600">外国語をやくしたり</span>、<br>たくさんの場所でかつやくしているんだ！</p>
+            </div>
+
+            <!-- Slide 6: Can/Can't -->
+            <div id="slide-5" class="slide bg-gradient-to-r from-green-100 to-red-100">
+                 <h2 class="text-3xl md:text-5xl font-pop text-gray-700 fade-in">AIのできること・できないこと</h2>
+                 <div class="flex flex-col md:flex-row justify-center items-stretch gap-4 md:gap-8 w-full mt-4">
+                    <div class="bg-white/70 border-4 border-green-400 rounded-xl p-4 flex-1 fade-in fade-in-delay-1"><div class="text-6xl text-green-500 font-bold">○</div><h3 class="text-2xl font-bold text-green-700">とくいなこと</h3><ul class="text-lg list-none mt-2"><li>▶ けいさんやルールがあること</li><li>▶ たくさんのことをおぼえる</li></ul></div>
+                    <div class="bg-white/70 border-4 border-red-400 rounded-xl p-4 flex-1 fade-in fade-in-delay-2"><div class="text-6xl text-red-500 font-bold">✕</div><h3 class="text-2xl font-bold text-red-700">にがてなこと</h3><ul class="text-lg list-none mt-2"><li>▶ こころをりかいする</li><li>▶ ほんとうの「いみ」をかんがえる</li></ul></div>
+                 </div>
+            </div>
+
+            <!-- Slide 7: Future -->
+            <div id="slide-6" class="slide future-bg text-white">
+                <div class="absolute inset-0 bg-black/30"></div>
+                <div class="future-rocket">🚀</div>
+                <div class="future-planet">🪐</div>
+                <div class="relative z-10">
+                    <h2 class="text-3xl md:text-5xl font-pop text-cyan-300 fade-in">AIとわたしたちのみらい</h2>
+                    <p class="text-lg md:text-xl mt-4 fade-in fade-in-delay-1">AIといっしょに、びょうきをなおしたり、<br>うちゅうにいったり…<br>もっとすてきなみらいがつくれるかも！</p>
+                </div>
+            </div>
+
+            <!-- Slide 8: Quiz 1 -->
+            <div id="slide-7" class="slide quiz-slide">
+                <h2 class="text-3xl md:text-5xl font-pop text-indigo-600 fade-in">クイズタイム！ (1/3)</h2>
+                <p class="text-xl my-4 fade-in fade-in-delay-1">AIが<span class="font-bold">とくいなこと</span>は、どっちかな？</p>
+                <div class="w-full max-w-md flex flex-col gap-4">
+                    <button class="quiz-btn w-full p-4 bg-white border-4 border-blue-300 rounded-lg text-lg font-bold fade-in fade-in-delay-2" data-correct="false">A) おともだちの気持ちを考える</button>
+                    <button class="quiz-btn w-full p-4 bg-white border-4 border-pink-300 rounded-lg text-lg font-bold fade-in fade-in-delay-3" data-correct="true">B) たくさんの計算をはやくする</button>
+                </div>
+                <p class="quiz-feedback text-3xl font-pop mt-4 h-10"></p>
+            </div>
+
+            <!-- Slide 9: Quiz 2 -->
+            <div id="slide-8" class="slide quiz-slide">
+                <h2 class="text-3xl md:text-5xl font-pop text-indigo-600 fade-in">クイズタイム！ (2/3)</h2>
+                <p class="text-xl my-4 fade-in fade-in-delay-1">AIがかしこくなるために、<span class="font-bold">ひつようなもの</span>はなにかな？</p>
+                <div class="w-full max-w-md flex flex-col gap-4">
+                    <button class="quiz-btn w-full p-4 bg-white border-4 border-green-300 rounded-lg text-lg font-bold fade-in fade-in-delay-2" data-correct="true">A) たくさんのデータ（お手本）</button>
+                    <button class="quiz-btn w-full p-4 bg-white border-4 border-yellow-300 rounded-lg text-lg font-bold fade-in fade-in-delay-3" data-correct="false">B) おいしいごはん</button>
+                </div>
+                <p class="quiz-feedback text-3xl font-pop mt-4 h-10"></p>
+            </div>
+
+            <!-- Slide 10: Quiz 3 -->
+            <div id="slide-9" class="slide quiz-slide">
+                <h2 class="text-3xl md:text-5xl font-pop text-indigo-600 fade-in">クイズタイム！ (3/3)</h2>
+                <p class="text-xl my-4 fade-in fade-in-delay-1">ことばを話すAIは、どうやって<span class="font-bold">つぎのことば</span>をきめている？</p>
+                <div class="w-full max-w-md flex flex-col gap-4">
+                    <button class="quiz-btn w-full p-4 bg-white border-4 border-red-300 rounded-lg text-lg font-bold fade-in fade-in-delay-2" data-correct="true">A) そのまえのことばとのつながりを見る</button>
+                    <button class="quiz-btn w-full p-4 bg-white border-4 border-purple-300 rounded-lg text-lg font-bold fade-in fade-in-delay-3" data-correct="false">B) その日のてんきを見る</button>
+                </div>
+                <p class="quiz-feedback text-3xl font-pop mt-4 h-10"></p>
+            </div>
+
+            <!-- Slide 11: Summary -->
+            <div id="slide-10" class="slide">
+                <h2 class="text-3xl md:text-5xl font-pop text-purple-600 fade-in">まとめ</h2>
+                <div class="robot-container fade-in fade-in-delay-1 flex flex-col items-center"><div class="robot-body w-32 h-32 relative"><div class="w-full h-full bg-gradient-to-br from-blue-400 to-blue-500 rounded-full flex items-center justify-center shadow-lg"><div class="robot-arm left"></div><div class="robot-arm right"></div><div class="bg-white/50 w-28 h-14 rounded-lg flex items-center justify-center gap-3"><div class="robot-eye bg-gray-800 w-5 h-7 rounded-full flex items-center justify-center"><div class="w-2 h-3 bg-white rounded-full translate-x-0.5 -translate-y-0.5"></div></div><div class="robot-eye bg-gray-800 w-5 h-7 rounded-full flex items-center justify-center"><div class="w-2 h-3 bg-white rounded-full translate-x-0.5 -translate-y-0.5"></div></div></div></div><div class="absolute -top-6 left-1/2 -translate-x-1/2 w-2 h-6 bg-gray-400 rounded-t-full"><div class="robot-antenna-light absolute -top-3 -left-1 w-4 h-4 bg-yellow-300 rounded-full"></div></div></div><div class="robot-shadow mt-2"></div></div>
+                <p class="text-lg md:text-2xl mt-4 fade-in fade-in-delay-2">AIは、わたしたちのせいかつをたすけてくれる<br>かしこいパートナーなんだ。<br>これからも、AIとなかよくしていこうね！</p>
+                <button id="restart-btn" class="mt-6 px-8 py-3 bg-yellow-400 text-yellow-900 font-bold rounded-full shadow-lg hover:bg-yellow-500 transition-transform hover:scale-105 fade-in fade-in-delay-3">もういちど見る</button>
+            </div>
+
+        </main>
+
+        <footer id="navigation" class="flex-shrink-0 bg-white/30 p-2 flex justify-between items-center">
+            <button id="prev-btn" class="px-6 py-2 bg-gray-300 text-gray-700 font-bold rounded-full shadow hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition">もどる</button>
+            <div id="progress-bar" class="flex-grow h-2 bg-gray-200 rounded-full mx-4"><div id="progress-indicator" class="h-full bg-blue-500 rounded-full transition-all duration-300"></div></div>
+            <button id="next-btn" class="px-6 py-2 bg-blue-500 text-white font-bold rounded-full shadow hover:bg-blue-600 transition">すすむ</button>
+        </footer>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const progressIndicator = document.getElementById('progress-indicator');
+        const navigation = document.getElementById('navigation');
+        let currentSlide = 0;
+        const totalSlides = slides.length;
+        
+        const slideInitializers = {};
+        let animationFrameIds = {};
+
+        function updateSlide(newSlideIndex) {
+            if (newSlideIndex < 0 || newSlideIndex >= totalSlides) return;
+
+            if (animationFrameIds[currentSlide]) {
+                cancelAnimationFrame(animationFrameIds[currentSlide]);
+                delete animationFrameIds[currentSlide];
+            }
+
+            slides[currentSlide].classList.remove('active');
+            currentSlide = newSlideIndex;
+            const slide = slides[currentSlide];
+            slide.classList.add('active');
+
+            slide.querySelectorAll('.fade-in').forEach(el => {
+                el.style.animation = 'none';
+                el.offsetHeight;
+                el.style.animation = null;
+            });
+            
+            if (slideInitializers[currentSlide]) {
+                slideInitializers[currentSlide]();
+            }
+
+            updateNav();
+        }
+        
+        function updateNav() {
+            progressIndicator.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+            prevBtn.disabled = currentSlide === 0;
+            navigation.style.display = (currentSlide === totalSlides - 1) ? 'none' : 'flex';
+        }
+
+        nextBtn.addEventListener('click', () => updateSlide(currentSlide + 1));
+        prevBtn.addEventListener('click', () => updateSlide(currentSlide - 1));
+        restartBtn.addEventListener('click', () => {
+            if(slideInitializers[3]) slideInitializers[3]();
+            document.querySelectorAll('.quiz-slide').forEach(resetQuiz);
+            updateSlide(0);
+        });
+        
+        slideInitializers[1] = function initBoids() {
+            const canvas = document.getElementById('boids-canvas');
+            const ctx = canvas.getContext('2d');
+            let flock = [];
+            let mouse = { x: null, y: null };
+
+            function resizeCanvas() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                flock = flock.filter(b => !b.isBoss);
+                const bigFish = new Boid(true);
+                bigFish.position = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                flock.push(bigFish);
+                 if (mouse.x === null) {
+                    mouse.x = e.clientX - rect.left;
+                    mouse.y = e.clientY - rect.top;
+                }
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouse.x = e.clientX - rect.left;
+                mouse.y = e.clientY - rect.top;
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                mouse.x = null;
+                mouse.y = null;
+            });
+
+            class Boid {
+                constructor(isBoss = false) {
+                    this.position = { x: Math.random() * canvas.width, y: Math.random() * canvas.height };
+                    this.velocity = { x: Math.random() * 4 - 2, y: Math.random() * 4 - 2 };
+                    this.isBoss = isBoss;
+                    this.maxSpeed = isBoss ? 3.5 : 2.0;
+                    this.maxForce = isBoss ? 0.1 : 0.04;
+                    this.size = isBoss ? 20 : 8;
+                    this.color = isBoss ? '#f59e0b' : '#3498db';
+                }
+                
+                edges() { if (this.position.x > canvas.width) this.position.x = 0; else if (this.position.x < 0) this.position.x = canvas.width; if (this.position.y > canvas.height) this.position.y = 0; else if (this.position.y < 0) this.position.y = canvas.height; }
+                applyForce(force) { this.velocity.x += force.x; this.velocity.y += force.y; const mag = Math.hypot(this.velocity.x, this.velocity.y); if (mag > this.maxSpeed) { this.velocity.x = (this.velocity.x / mag) * this.maxSpeed; this.velocity.y = (this.velocity.y / mag) * this.maxSpeed; } }
+                steer(desired) { let steer = { x: desired.x - this.velocity.x, y: desired.y - this.velocity.y }; const mag = Math.hypot(steer.x, steer.y); if (mag > this.maxForce) { steer.x = (steer.x / mag) * this.maxForce; steer.y = (steer.y / mag) * this.maxForce; } return steer; }
+                
+                seek(target) {
+                    if (!target || target.x === null) return {x: 0, y: 0};
+                    let desired = { x: target.x - this.position.x, y: target.y - this.position.y };
+                    const mag = Math.hypot(desired.x, desired.y);
+                    desired.x = (desired.x / mag) * this.maxSpeed;
+                    desired.y = (desired.y / mag) * this.maxSpeed;
+                    return this.steer(desired);
+                }
+                
+                align(boids) { let perceptionRadius = 50; let steering = { x: 0, y: 0 }; let total = 0; for (let other of boids) { if (other.isBoss) continue; let d = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y); if (other !== this && d < perceptionRadius) { steering.x += other.velocity.x; steering.y += other.velocity.y; total++; } } if (total > 0) { steering.x /= total; steering.y /= total; const mag = Math.hypot(steering.x, steering.y); steering.x = (steering.x / mag) * this.maxSpeed; steering.y = (steering.y / mag) * this.maxSpeed; return this.steer(steering); } return steering; }
+                cohesion(boids) { let perceptionRadius = 100; let steering = { x: 0, y: 0 }; let total = 0; for (let other of boids) { if (other.isBoss) continue; let d = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y); if (other !== this && d < perceptionRadius) { steering.x += other.position.x; steering.y += other.position.y; total++; } } if (total > 0) { steering.x /= total; steering.y /= total; let desired = { x: steering.x - this.position.x, y: steering.y - this.position.y }; const mag = Math.hypot(desired.x, desired.y); desired.x = (desired.x / mag) * this.maxSpeed; desired.y = (desired.y / mag) * this.maxSpeed; return this.steer(desired); } return steering; }
+                separation(boids) { 
+                    let perceptionRadius = 24; 
+                    let steering = { x: 0, y: 0 }; 
+                    let total = 0; 
+                    for (let other of boids) { 
+                        let d = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y); 
+                        if (other !== this && d > 0 && d < perceptionRadius) { 
+                            let diff = { x: this.position.x - other.position.x, y: this.position.y - other.position.y }; 
+                            diff.x /= d*d; diff.y /= d*d; 
+                            steering.x += diff.x; steering.y += diff.y; total++; 
+                        }
+                        if (other.isBoss && d < 120) {
+                            let diff = { x: this.position.x - other.position.x, y: this.position.y - other.position.y };
+                            const fleeWeight = (120 - d) / 120;
+                            steering.x += diff.x * fleeWeight * 0.1;
+                            steering.y += diff.y * fleeWeight * 0.1;
+                            total++;
+                        }
+                    } 
+                    if (total > 0) { steering.x /= total; steering.y /= total; const mag = Math.hypot(steering.x, steering.y); steering.x = (steering.x / mag) * this.maxSpeed; steering.y = (steering.y / mag) * this.maxSpeed; return this.steer(steering); } return steering; 
+                }
+
+                flock(boids) {
+                    if (this.isBoss) {
+                        this.applyForce(this.seek(mouse));
+                    } else {
+                        let alignment = this.align(boids);
+                        let cohesion = this.cohesion(boids);
+                        let separation = this.separation(boids);
+                        this.applyForce(alignment);
+                        this.applyForce(cohesion);
+                        this.applyForce(separation);
+                    }
+                }
+
+                update() { this.position.x += this.velocity.x; this.position.y += this.velocity.y; this.edges(); }
+                draw() { ctx.save(); ctx.translate(this.position.x, this.position.y); ctx.rotate(Math.atan2(this.velocity.y, this.velocity.x)); ctx.beginPath(); ctx.moveTo(this.size, 0); ctx.lineTo(-this.size/2, this.size/2); ctx.lineTo(-this.size/2, -this.size/2); ctx.closePath(); ctx.fillStyle = this.color; ctx.fill(); ctx.restore(); }
+            }
+
+            flock = Array.from({ length: 70 }, () => new Boid());
+
+            function animate() {
+                if (currentSlide !== 1) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (let boid of flock) {
+                    boid.flock(flock);
+                    boid.update();
+                    boid.draw();
+                }
+                animationFrameIds[1] = requestAnimationFrame(animate);
+            }
+            animate();
+        };
+        
+        slideInitializers[3] = function initLLMv6Demo() {
+            const sentenceDiv = document.getElementById('llm-v6-sentence');
+            const nnCanvas = document.getElementById('llm-v6-nn-canvas');
+            const predictBtn = document.getElementById('llm-v6-predict-btn');
+            const againBtn = document.getElementById('llm-v6-again-btn');
+            const nnCtx = nnCanvas.getContext('2d');
+
+            const examples = [
+                {
+                    tokens: ["地球", "は", "青い", "。"],
+                    candidates: {
+                        1: ["は", "も", "が"],
+                        2: ["青い", "丸い", "平たい"],
+                        3: ["。", "！", "？"]
+                    }
+                },
+                {
+                    tokens: ["夏", "は", "あつい", "です", "。"],
+                    candidates: {
+                        1: ["は", "の", "も"],
+                        2: ["あつい", "さむい", "たのしい"],
+                        3: ["です", "から", "ので"],
+                        4: ["。", "！", "？"]
+                    }
+                },
+                {
+                    tokens: ["今日", "の", "夜ご飯", "は", "カレー", "だ", "。"],
+                     candidates: {
+                        1: ["の", "は", "も"],
+                        2: ["夜ご飯", "天気", "気分"],
+                        3: ["は", "が", "を"],
+                        4: ["カレー", "寿司", "焼肉"],
+                        5: ["だ", "です", "かな"],
+                        6: ["。", "！", "？"]
+                    }
+                }
+            ];
+            let currentExample, currentIndex;
+
+            function pickExample() {
+                currentExample = examples[Math.floor(Math.random() * examples.length)];
+                currentIndex = 0;
+                sentenceDiv.textContent = '';
+                predictBtn.disabled = false;
+                predictNext();
+            }
+
+            function predictNext() {
+                if (currentIndex >= currentExample.tokens.length) return;
+
+                predictBtn.disabled = true;
+                const token = currentExample.tokens[currentIndex];
+                const currentText = sentenceDiv.textContent;
+                if (token.match(/[。！？]/)) {
+                     sentenceDiv.textContent = currentText.trimEnd() + token;
+                } else {
+                     sentenceDiv.textContent += token + " ";
+                }
+                currentIndex++;
+
+                animateNetwork();
+
+                setTimeout(() => {
+                    if (currentIndex < currentExample.tokens.length) {
+                        predictBtn.disabled = false;
+                    } else {
+                        predictBtn.disabled = true;
+                    }
+                }, 1000);
+            }
+
+            function drawNetwork(activation = 0) {
+                const w = nnCanvas.width = nnCanvas.offsetWidth;
+                const h = nnCanvas.height = nnCanvas.offsetHeight;
+                nnCtx.clearRect(0, 0, w, h);
+
+                const layers = 4; // Input, Hidden, Hidden, Output
+                const radius = 8;
+                const layerGap = w / (layers + 1);
+
+                let prevLayerNodes = [];
+                const context = currentExample.tokens.slice(0, currentIndex);
+                const numInputs = Math.max(1, context.length);
+                const inputNodeGap = h / (numInputs + 1);
+
+                nnCtx.fillStyle = '#1f2937';
+                nnCtx.font = '14px sans-serif';
+                nnCtx.textAlign = 'right';
+                for(let i = 0; i < numInputs; i++) {
+                    const x = layerGap;
+                    const y = inputNodeGap * (i + 1);
+                    prevLayerNodes.push({x, y});
+                    nnCtx.fillText(context[i] || 'Start', x - 20, y + 5);
+                }
+
+                for (let i = 1; i < layers; i++) {
+                    const isOutput = i === layers - 1;
+                    const numNodes = isOutput ? 3 : 5;
+                    const nodeGap = h / (numNodes + 1);
+                    const currentLayerNodes = [];
+
+                    for (let j = 0; j < numNodes; j++) {
+                        const x = layerGap * (i + 1);
+                        const y = nodeGap * (j + 1);
+                        currentLayerNodes.push({x, y});
+
+                        for (const prevNode of prevLayerNodes) {
+                            nnCtx.beginPath();
+                            nnCtx.moveTo(prevNode.x, prevNode.y);
+                            nnCtx.lineTo(x, y);
+                            const progress = Math.max(0, (activation - (i-1) / (layers -1)) * (layers-1));
+                            const alpha = Math.min(0.5, 0.05 + progress * 0.45);
+                            nnCtx.strokeStyle = `rgba(76, 81, 191, ${alpha})`;
+                            nnCtx.stroke();
+                        }
+                    }
+                    prevLayerNodes = currentLayerNodes;
+                }
+
+                for (let i = 0; i < layers; i++) {
+                    const isInput = i === 0;
+                    const isOutput = i === layers - 1;
+                    const numNodes = isInput ? numInputs : isOutput ? 3 : 5;
+                    const nodeGap = h / (numNodes + 1);
+                    
+                    for (let j = 0; j < numNodes; j++) {
+                        const x = layerGap * (i + 1);
+                        const y = nodeGap * (j + 1);
+                        
+                        let isActive = false;
+                        if (activation > 0) {
+                            const progress = Math.max(0, (activation - i / (layers -1)) * layers);
+                            isActive = Math.random() < progress * 0.5;
+                        }
+
+                        nnCtx.beginPath();
+                        nnCtx.arc(x, y, radius, 0, Math.PI * 2);
+                        nnCtx.fillStyle = isActive ? '#facc15' : '#edf2f7';
+                        nnCtx.fill();
+                        nnCtx.strokeStyle = '#4c51bf';
+                        nnCtx.stroke();
+                    }
+                }
+
+                if (currentIndex < currentExample.tokens.length) {
+                    const outputCandidates = currentExample.candidates[currentIndex];
+                    const outputNodeGap = h / (outputCandidates.length + 1);
+                    nnCtx.textAlign = 'left';
+                    outputCandidates.forEach((token, i) => {
+                        if (activation > 0.9) {
+                           nnCtx.fillStyle = (i === 0) ? '#16a34a' : '#ef4444';
+                           nnCtx.font = (i === 0) ? 'bold 16px sans-serif' : '14px sans-serif';
+                        } else {
+                            nnCtx.fillStyle = '#1f2937';
+                            nnCtx.font = '14px sans-serif';
+                        }
+                        nnCtx.fillText(token, w - layerGap + 20, outputNodeGap * (i + 1) + 5);
+                    });
+                }
+            }
+            
+            function animateNetwork() {
+                let startTime = null;
+                const duration = 1000;
+                
+                function frame(timestamp) {
+                    if (currentSlide !== 3) return;
+                    if (!startTime) startTime = timestamp;
+                    const progress = Math.min((timestamp - startTime) / duration, 1);
+                    
+                    drawNetwork(progress);
+                    
+                    if (progress < 1) {
+                        animationFrameIds[3] = requestAnimationFrame(frame);
+                    }
+                }
+                animationFrameIds[3] = requestAnimationFrame(frame);
+            }
+
+            predictBtn.addEventListener('click', predictNext);
+            againBtn.addEventListener('click', pickExample);
+            
+            pickExample();
+        };
+
+        function setupQuizListeners() { document.querySelectorAll('.quiz-slide').forEach(slide => { const buttons = slide.querySelectorAll('.quiz-btn'); buttons.forEach(btn => { btn.addEventListener('click', () => { handleQuizAnswer(btn.dataset.correct === 'true', btn, slide); }); }); }); }
+        function handleQuizAnswer(isCorrect, btn, slide) { const feedbackEl = slide.querySelector('.quiz-feedback'); const buttons = slide.querySelectorAll('.quiz-btn'); buttons.forEach(b => b.disabled = true); if (isCorrect) { btn.classList.add('correct'); feedbackEl.textContent = 'せいかい！🎉'; feedbackEl.style.color = '#2ecc71'; } else { btn.classList.add('wrong'); feedbackEl.textContent = 'ざんねん！'; feedbackEl.style.color = '#e74c3c'; slide.querySelector('[data-correct="true"]').classList.add('correct'); } }
+        function resetQuiz(slide) { const feedbackEl = slide.querySelector('.quiz-feedback'); const buttons = slide.querySelectorAll('.quiz-btn'); buttons.forEach(b => { b.disabled = false; b.classList.remove('correct', 'wrong'); }); feedbackEl.textContent = ''; }
+
+        setupQuizListeners();
+        updateSlide(0);
+
+    </script>
+</body>
+</html>
